@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
-const pdf = require('pdf-parse');
+const pdfjsLib = require('pdfjs-dist');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
@@ -28,9 +28,18 @@ app.post('/api/analyze', upload.single('resume'), async (req, res) => {
       return res.status(400).json({ error: 'Missing resume or job description' });
     }
 
-    // Extract text from PDF
-    const data = await pdf(resumeFile.buffer);
-    const resumeText = data.text;
+    // Extract text from PDF using pdfjs-dist
+    const dataArray = new Uint8Array(resumeFile.buffer);
+    const loadingTask = pdfjsLib.getDocument({ data: dataArray });
+    const pdf = await loadingTask.promise;
+    
+    let resumeText = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(" ");
+      resumeText += pageText + "\n";
+    }
 
     // Gemini API Prompt
     const prompt = `Compare this resume with the job description. 
@@ -60,11 +69,22 @@ ${jobDescription}`;
 
   } catch (error) {
     console.error('Detailed Analysis Error:', error);
-    // Log specific details if available
+    
+    let errorMessage = 'Internal server error during analysis.';
+    let details = error.message;
+
     if (error.response) {
       console.error('API Response Data:', error.response.data);
+      errorMessage += ' API Key or Quota issue.';
+    } else if (error.message && error.message.includes('pdf')) {
+      errorMessage = 'Error parsing PDF file.';
     }
-    res.status(500).json({ error: 'Internal server error during analysis. Check your API key and quota.' });
+
+    res.status(500).json({ 
+      error: errorMessage,
+      details: details,
+      suggestion: 'Check your API key, quota, and ensures the PDF is readable.'
+    });
   }
 });
 

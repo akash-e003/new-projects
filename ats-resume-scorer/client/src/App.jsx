@@ -35,7 +35,15 @@ const App = () => {
       setResult(data);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || 'Failed to analyze resume. Please check if the backend is running and your API key is valid.');
+      if (err.response?.data) {
+        setError({
+          message: err.response.data.error,
+          details: err.response.data.details,
+          suggestion: err.response.data.suggestion
+        });
+      } else {
+        setError('Failed to analyze resume. Please check if the backend is running and your API key is valid.');
+      }
     } finally {
       setLoading(false);
     }
@@ -123,9 +131,21 @@ const App = () => {
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm flex items-center gap-2"
+              className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs flex flex-col gap-2 shadow-[0_0_20px_rgba(239,68,68,0.1)]"
             >
-              <AlertCircle className="w-4 h-4" /> {error}
+              <div className="flex items-center gap-2 font-bold uppercase tracking-wider mb-1">
+                <AlertCircle className="w-4 h-4" /> {error.message || error}
+              </div>
+              {error.details && (
+                <p className="opacity-70 font-mono text-[10px] bg-red-500/5 p-2 rounded-md border border-red-500/10">
+                  {error.details}
+                </p>
+              )}
+              {error.suggestion && (
+                <p className="text-white/40 italic text-[10px]">
+                  💡 {error.suggestion}
+                </p>
+              )}
             </motion.div>
           )}
         </div>

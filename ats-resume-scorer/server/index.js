@@ -83,7 +83,7 @@ ${jobDescription}`;
     res.status(500).json({ 
       error: errorMessage,
       details: details,
-      suggestion: 'Check your API key, quota, and ensures the PDF is readable.'
+      suggestion: 'Please verify your API key in the server/.env file and ensure you have enough quota.'
     });
   }
 });
